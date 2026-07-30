@@ -1,0 +1,18 @@
+{
+  "name": "comfort-card",
+  "version": "0.1.0",
+  "description": "A Home Assistant Lovelace card showing room temperature/humidity comfort at a glance.",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "dependencies": {
+    "custom-card-helpers": "^1.9.0",
+    "lit": "^3.1.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}
