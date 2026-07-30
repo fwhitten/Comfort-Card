@@ -2,7 +2,6 @@ import { LitElement, html, css, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import {
   handleAction,
-  hasConfigOrEntityChanged,
   type HomeAssistant,
   type LovelaceCard,
   type LovelaceCardEditor,
@@ -89,7 +88,17 @@ export class ComfortCard extends LitElement implements LovelaceCard {
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this._config) return false;
-    return hasConfigOrEntityChanged(this as unknown as LovelaceCard, changedProps, false);
+    if (changedProps.has("_config")) return true;
+    const oldHass = changedProps.get("hass") as (HomeAssistant & HomeAssistantWithRegistry) | undefined;
+    if (!oldHass) return true;
+
+    const tempEntity = this._temperatureEntity;
+    const humidityEntity = this._humidityEntity;
+    return (
+      (tempEntity && oldHass.states[tempEntity] !== this.hass!.states[tempEntity]) ||
+      (humidityEntity && oldHass.states[humidityEntity] !== this.hass!.states[humidityEntity]) ||
+      oldHass.themes !== this.hass!.themes
+    );
   }
 
   private get _temperatureEntity(): string | undefined {
