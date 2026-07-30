@@ -19,9 +19,9 @@ separate light/dark theme colours.
 
 ### Manual
 
-1. Run `npm install && npm run build` (or take the pre-built
-   `dist/comfort-card.js`).
-2. Copy `dist/comfort-card.js` into `config/www/comfort-card.js`.
+1. Take the pre-built `comfort-card.js` from the repo root (or run
+   `npm install && npm run build` to produce your own).
+2. Copy it into `config/www/comfort-card.js`.
 3. In Home Assistant: **Settings → Dashboards → Resources → Add
    Resource**, URL `/local/comfort-card.js`, type **JavaScript Module**.
 4. Reload the browser.
@@ -75,5 +75,5 @@ decides the state — e.g. a room that's mildly warm but very dry shows
 
 ```bash
 npm install
-npm run watch   # rebuilds dist/comfort-card.js on change
+npm run watch   # rebuilds comfort-card.js on change
 ```

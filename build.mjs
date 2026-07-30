@@ -7,7 +7,7 @@ const options = {
   bundle: true,
   format: "esm",
   target: "es2019",
-  outfile: "dist/comfort-card.js",
+  outfile: "comfort-card.js",
   minify: !watch,
   sourcemap: watch,
   legalComments: "none",
@@ -19,5 +19,5 @@ if (watch) {
   console.log("Watching for changes...");
 } else {
   await esbuild.build(options);
-  console.log("Build complete: dist/comfort-card.js");
+  console.log("Build complete: comfort-card.js");
 }
