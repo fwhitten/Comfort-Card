@@ -86,6 +86,20 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     return 4;
   }
 
+  // Sections/grid layout (HA 2024.11+). These are defaults only: whatever the
+  // user picks in the layout editor is stored in config.grid_options and must
+  // win, otherwise the size sliders snap back on every re-render.
+  public getGridOptions(): Record<string, number | string> {
+    return {
+      columns: 6,
+      rows: 4,
+      min_columns: 6,
+      min_rows: 4,
+      ...(this._config?.grid_options || {}),
+    };
+  }
+
+  // Masonry/panel layout (pre-2024.11) still reads this.
   public getLayoutOptions(): Record<string, number> {
     return {
       grid_columns: 6,
@@ -232,17 +246,19 @@ export class ComfortCard extends LitElement implements LovelaceCard {
           </div>
         </div>
 
-        <div class="gauge-label top">TOO WARM</div>
-        <div class="gauge-row">
-          <div class="gauge-label left">DRY</div>
-          <svg viewBox="0 0 ${size} ${size}" class="gauge">
-            <circle class="outer" cx=${cx} cy=${cy} r=${outerR}></circle>
-            <circle class="inner" cx=${cx} cy=${cy} r=${innerR}></circle>
-            <circle class="dot" cx=${dotX} cy=${dotY} r="9"></circle>
-          </svg>
-          <div class="gauge-label right">HUMID</div>
+        <div class="gauge-block">
+          <div class="gauge-label top">TOO WARM</div>
+          <div class="gauge-row">
+            <div class="gauge-label left">DRY</div>
+            <svg viewBox="0 0 ${size} ${size}" class="gauge">
+              <circle class="outer" cx=${cx} cy=${cy} r=${outerR}></circle>
+              <circle class="inner" cx=${cx} cy=${cy} r=${innerR}></circle>
+              <circle class="dot" cx=${dotX} cy=${dotY} r="9"></circle>
+            </svg>
+            <div class="gauge-label right">HUMID</div>
+          </div>
+          <div class="gauge-label bottom">COLD</div>
         </div>
-        <div class="gauge-label bottom">COLD</div>
 
         <div class="footer">
           <div class="stat">
@@ -263,12 +279,15 @@ export class ComfortCard extends LitElement implements LovelaceCard {
   static styles = css`
     :host {
       display: block;
+      height: 100%;
     }
 
     ha-card {
       container-type: inline-size;
       container-name: comfort-card;
-      display: block;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       box-sizing: border-box;
       padding: 20px 24px 24px;
       border-radius: var(--ha-card-border-radius, 12px);
@@ -292,6 +311,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
+      flex: 0 0 auto;
     }
 
     .name {
@@ -319,19 +339,45 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       text-align: center;
     }
 
+    /* The gauge and its four labels stay together as one block, absorbing the
+       card's spare vertical space and centring within it, so a taller grid row
+       keeps the labels tight to the circle instead of pinning them to the
+       card edges. */
+    .gauge-block {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
     .gauge-label.top {
       margin-bottom: 4px;
+      flex: 0 0 auto;
     }
 
     .gauge-label.bottom {
       margin-top: 4px;
+      flex: 0 0 auto;
     }
 
+    /* flex-basis 0 gives the row a definite height from the flex layout, which
+       is what the gauge's max-height percentage resolves against; with an auto
+       basis the row sizes to the SVG and the gauge overflows short cards. */
     .gauge-row {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
+      /* minmax(0, 1fr) stops the implicit row from auto-sizing to the SVG and
+         overflowing short cards; it also gives the gauge's max-height
+         percentage a definite box to resolve against. */
+      grid-template-rows: minmax(0, 1fr);
       align-items: center;
       column-gap: 12px;
+      flex: 1 1 0;
+      min-height: 0;
+      /* Matches the gauge's own cap so a tall card does not leave the top and
+         bottom labels stranded away from the circle. */
+      max-height: 200px;
     }
 
     .gauge-label.left {
@@ -342,9 +388,13 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       text-align: left;
     }
 
+    /* The SVG's default preserveAspectRatio keeps the circle round and
+       centred even when the box it is given is not square, so capping the
+       height here shrinks the gauge to fit rather than distorting it. */
     .gauge {
       width: clamp(84px, 46cqi, 200px);
       height: clamp(84px, 46cqi, 200px);
+      max-height: 100%;
       justify-self: center;
     }
 
@@ -367,6 +417,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       justify-content: space-between;
       margin-top: 20px;
       gap: 12px;
+      flex: 0 0 auto;
     }
 
     .stat-label {
@@ -430,6 +481,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
         width: 100%;
         height: auto;
         max-width: 200px;
+        max-height: 100%;
         aspect-ratio: 1;
       }
     }

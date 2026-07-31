@@ -30,6 +30,9 @@ export interface ComfortCardConfig extends LovelaceCardConfig {
 
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
+
+  /** Written by the HA layout editor when the user resizes the card. */
+  grid_options?: Record<string, number | string>;
 }
 
 // The frontend `hass` object exposes these entity/device/area registry maps
