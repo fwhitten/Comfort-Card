@@ -13,12 +13,15 @@ export const DEFAULT_COMFORT = {
   humidity_outer_max: 80,
 };
 
+// Light-mode colors are a brighter tint of the dark-mode color, but kept dark
+// enough (relative luminance <= ~0.17) that white card text stays readable
+// (WCAG AA, >= 4.5:1 contrast against white).
 export const DEFAULT_COLORS: Record<ComfortState, ComfortColorPair> = {
-  pleasant: { dark: "#1c3829", light: "#dcecdf" },
-  too_warm: { dark: "#4a2416", light: "#f6dcc9" },
-  cold: { dark: "#17324c", light: "#d3e4f2" },
-  dry: { dark: "#4a3c14", light: "#f2e6bf" },
-  humid: { dark: "#123f42", light: "#cde9ea" },
+  pleasant: { dark: "#1c3829", light: "#2f6b47" },
+  too_warm: { dark: "#4a2416", light: "#8a4321" },
+  cold: { dark: "#17324c", light: "#2d5a86" },
+  dry: { dark: "#4a3c14", light: "#8a6f1f" },
+  humid: { dark: "#123f42", light: "#1f6d72" },
 };
 
 export const DEFAULT_ICONS: Record<ComfortState, string> = {

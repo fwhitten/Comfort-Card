@@ -86,6 +86,15 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     return 4;
   }
 
+  public getLayoutOptions(): Record<string, number> {
+    return {
+      grid_columns: 6,
+      grid_min_columns: 6,
+      grid_rows: 4,
+      grid_min_rows: 4,
+    };
+  }
+
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this._config) return false;
     if (changedProps.has("_config")) return true;
@@ -203,9 +212,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     const dotX = cx + comfort.dotX * scale;
     const dotY = cy + comfort.dotY * scale;
 
-    const tempUnit = tempState.attributes.unit_of_measurement || "°";
     const tempFormatted = formatNumber(temperature, 1);
-    const [tempInt, tempDec] = tempFormatted.split(/[.,]/);
     const humidityFormatted = Math.round(humidity);
 
     return html`
@@ -239,14 +246,14 @@ export class ComfortCard extends LitElement implements LovelaceCard {
 
         <div class="footer">
           <div class="stat">
-            <div class="stat-label">TEMPERATURE</div>
-            <div class="stat-value">
-              ${tempInt}${tempDec ? html`<span class="unit-deg">°</span><span class="stat-dec">.${tempDec}</span>` : html`<span class="unit-deg">${tempUnit}</span>`}
+            <div class="stat-label">
+              <span class="label-long">TEMPERATURE</span><span class="label-short">TEMP</span>
             </div>
+            <div class="stat-value">${tempFormatted}°</div>
           </div>
           <div class="stat">
             <div class="stat-label">HUMIDITY</div>
-            <div class="stat-value">${humidityFormatted}<span class="unit-deg">%</span></div>
+            <div class="stat-value">${humidityFormatted}%</div>
           </div>
         </div>
       </ha-card>
@@ -254,8 +261,15 @@ export class ComfortCard extends LitElement implements LovelaceCard {
   }
 
   static styles = css`
-    ha-card {
+    :host {
       display: block;
+    }
+
+    ha-card {
+      container-type: inline-size;
+      container-name: comfort-card;
+      display: block;
+      box-sizing: border-box;
       padding: 20px 24px 24px;
       border-radius: var(--ha-card-border-radius, 12px);
       color: white;
@@ -275,13 +289,15 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     .header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
+      gap: 8px;
       margin-bottom: 12px;
     }
 
     .name {
       font-size: 22px;
       font-weight: 700;
+      line-height: 1.2;
     }
 
     .state {
@@ -290,7 +306,9 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       gap: 6px;
       font-size: 18px;
       font-weight: 700;
+      line-height: 1.2;
       text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .gauge-label {
@@ -310,16 +328,24 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     }
 
     .gauge-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      justify-content: center;
-      gap: 12px;
+      column-gap: 12px;
+    }
+
+    .gauge-label.left {
+      text-align: right;
+    }
+
+    .gauge-label.right {
+      text-align: left;
     }
 
     .gauge {
-      width: 200px;
-      height: 200px;
-      flex-shrink: 0;
+      width: clamp(84px, 46cqi, 200px);
+      height: clamp(84px, 46cqi, 200px);
+      justify-self: center;
     }
 
     .gauge .outer {
@@ -340,6 +366,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       display: flex;
       justify-content: space-between;
       margin-top: 20px;
+      gap: 12px;
     }
 
     .stat-label {
@@ -354,15 +381,72 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       font-size: 34px;
       font-weight: 700;
       line-height: 1;
+      white-space: nowrap;
     }
 
-    .unit-deg {
-      font-size: 16px;
-      vertical-align: top;
+    .label-short {
+      display: none;
     }
 
-    .stat-dec {
-      font-size: 20px;
+    @container comfort-card (max-width: 300px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .stat-value {
+        font-size: 26px;
+      }
+
+      .label-long {
+        display: none;
+      }
+
+      .label-short {
+        display: inline;
+      }
+
+      /* Turning the side labels on their side, and letting their columns
+         collapse to the text width instead of 1fr, frees up the horizontal
+         space the gauge needs to stay legible in a half-width column. */
+      .gauge-label.left,
+      .gauge-label.right {
+        writing-mode: vertical-rl;
+        text-align: center;
+        line-height: 1;
+      }
+
+      .gauge-label.left {
+        rotate: 180deg;
+      }
+
+      .gauge-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        column-gap: 2px;
+      }
+
+      .gauge {
+        width: 100%;
+        height: auto;
+        max-width: 200px;
+        aspect-ratio: 1;
+      }
+    }
+
+    @container comfort-card (max-width: 240px) {
+      ha-card {
+        padding: 16px 14px;
+      }
+
+      .gauge-label {
+        font-size: 10px;
+        letter-spacing: 0;
+      }
+
+      .footer {
+        gap: 6px;
+      }
     }
   `;
 }
