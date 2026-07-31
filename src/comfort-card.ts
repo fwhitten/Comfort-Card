@@ -361,19 +361,24 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       flex: 0 0 auto;
     }
 
-    /* flex-basis 0 gives the row a definite height from the flex layout, which
-       is what the gauge's max-height percentage resolves against; with an auto
-       basis the row sizes to the SVG and the gauge overflows short cards. */
     .gauge-row {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       /* minmax(0, 1fr) stops the implicit row from auto-sizing to the SVG and
          overflowing short cards; it also gives the gauge's max-height
-         percentage a definite box to resolve against. */
+         percentage a definite box to resolve against once this row's own
+         height is resolved. */
       grid-template-rows: minmax(0, 1fr);
       align-items: center;
       column-gap: 12px;
-      flex: 1 1 0;
+      /* flex-basis must be auto, not 0: in HA's "auto height" grid mode no
+         ancestor has a definite height, so the flex layout sizes .gauge-block
+         to its content. A 0 basis tells that sizing pass this row contributes
+         nothing, collapsing the whole card to ~0px. An auto basis uses the
+         row's real (SVG) content size instead, so the card sizes naturally
+         when unconstrained, while flex-shrink still lets it shrink to fit
+         when a fixed-height grid cell is smaller than that natural size. */
+      flex: 1 1 auto;
       min-height: 0;
       /* Matches the gauge's own cap so a tall card does not leave the top and
          bottom labels stranded away from the circle. */
