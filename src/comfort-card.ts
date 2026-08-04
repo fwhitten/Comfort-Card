@@ -46,9 +46,11 @@ console.info(
 // Gauge geometry, in viewBox units.
 const VIEW = 200;
 const CENTER = VIEW / 2;
-const RING_RADIUS = 84;
+/** Sized so the ring plus its labels very nearly fill the viewBox: any spare
+    margin here is dead space that shrinks the gauge on screen. */
+const RING_RADIUS = 94;
 /** Keeps the dot (and trail) clear of the ring stroke at full deflection. */
-const PLOT_RADIUS = 64;
+const PLOT_RADIUS = 71;
 const DOT_RADIUS = 11;
 
 /** Half-width of the ring gap each label sits in, in degrees. */
@@ -177,6 +179,11 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       const box = entries[0]?.contentRect;
       if (!box || !box.width || !box.height) return;
       this._layout = this._layoutFor(box.width, box.height);
+      // Landscape text is constrained by height, not width, so container query
+      // units (which are width-based) would size it far too large on a wide,
+      // short card. cqh isn't an option: it needs container-type: size, which
+      // requires the definite height auto-height mode never has.
+      this.style.setProperty("--comfort-h", `${box.height}px`);
     });
     this._resizeObserver.observe(this);
     this._historyTimer = window.setInterval(() => this._refreshHistory(true), HISTORY_REFRESH_MS);
@@ -202,21 +209,22 @@ export class ComfortCard extends LitElement implements LovelaceCard {
    * boundary flip back and forth forever; the dead zone stops that.
    */
   private _layoutFor(width: number, height: number): CardLayout {
-    if (width < 240) return "vertical";
-
     const aspect = width / height;
     const current = this._layout;
 
-    if (current === "horizontal") {
-      return aspect < 1.15 ? "square" : "horizontal";
+    // Landscape is decided first and on aspect alone. A short card can be
+    // narrower than the stacking threshold below and still be landscape (a
+    // 6-column, 2-row card is the common case), so the width guard must not
+    // pre-empt this.
+    if (current === "horizontal" ? aspect >= 1.15 : aspect >= 1.25) {
+      return "horizontal";
     }
-    if (current === "vertical") {
-      if (aspect >= 1.25) return "horizontal";
-      return aspect > 0.95 ? "square" : "vertical";
-    }
-    if (aspect >= 1.25) return "horizontal";
-    if (aspect <= 0.85) return "vertical";
-    return "square";
+
+    // Not landscape: anything this narrow has to stack.
+    if (width < 240) return "vertical";
+
+    if (current === "vertical") return aspect > 0.95 ? "square" : "vertical";
+    return aspect <= 0.85 ? "vertical" : "square";
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -647,6 +655,24 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       column-gap: 12px;
     }
 
+    /* Sized from the card's height so the stacked text always fits; the caps
+       match the width-driven sizes used by the other layouts. */
+    ha-card[data-layout="horizontal"] {
+      padding: 12px 16px;
+    }
+
+    ha-card[data-layout="horizontal"] .name {
+      font-size: clamp(13px, calc(var(--comfort-h, 200px) * 0.16), 26px);
+    }
+
+    ha-card[data-layout="horizontal"] .state {
+      font-size: clamp(11px, calc(var(--comfort-h, 200px) * 0.125), 22px);
+    }
+
+    ha-card[data-layout="horizontal"] .value {
+      font-size: clamp(14px, calc(var(--comfort-h, 200px) * 0.145), 30px);
+    }
+
     ha-card[data-layout="horizontal"] .header {
       align-self: start;
     }
@@ -655,8 +681,16 @@ export class ComfortCard extends LitElement implements LovelaceCard {
       align-self: end;
     }
 
+    /* Driven by height, not width: sizing by width and then clamping with
+       max-height leaves the box wider than tall, and the SVG centres the round
+       gauge in it, stranding the difference as empty space beside the circle.
+       No min-width is needed as a collapse guard — the gauge spans both grid
+       rows, so its area is sized by the header and values even when the card
+       itself has no definite height, and height: 100% still resolves. */
     ha-card[data-layout="horizontal"] .gauge-wrap {
-      width: 46cqi;
+      height: 100%;
+      width: auto;
+      max-width: 56cqi;
     }
 
     ha-card[data-layout="square"],
