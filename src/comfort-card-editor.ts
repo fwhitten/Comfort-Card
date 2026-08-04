@@ -3,7 +3,13 @@ import { customElement, property, state } from "lit/decorators.js";
 import { fireEvent, type HomeAssistant } from "custom-card-helpers";
 
 import type { ComfortCardConfig, ComfortCardEditorElement, ComfortState } from "./types";
-import { DEFAULT_COMFORT, DEFAULT_COLORS, DEFAULT_ICONS, STATE_LABELS } from "./const";
+import {
+  DEFAULT_COLORS,
+  DEFAULT_COMFORT,
+  DEFAULT_HISTORY_HOURS,
+  MAX_HISTORY_HOURS,
+  STATE_LABELS,
+} from "./const";
 
 const STATES: ComfortState[] = ["pleasant", "too_warm", "cold", "dry", "humid"];
 
@@ -21,6 +27,7 @@ const LABELS: Record<string, string> = {
   humidity_max: "Comfort max (%)",
   humidity_outer_min: "Gauge min (%)",
   humidity_outer_max: "Gauge max (%)",
+  history_hours: "Hours of history",
   tap_action: "Tap action",
   hold_action: "Hold action",
 };
@@ -42,6 +49,12 @@ function mainSchema(manual: boolean) {
           },
         ]
       : []),
+    {
+      name: "history_hours",
+      selector: {
+        number: { min: 0, max: MAX_HISTORY_HOURS, step: 1, mode: "slider", unit_of_measurement: "h" },
+      },
+    },
     {
       name: "thresholds",
       type: "expandable",
@@ -103,13 +116,6 @@ export class ComfortCardEditor extends LitElement implements ComfortCardEditorEl
     fireEvent(this, "config-changed", { config: newConfig });
   }
 
-  private _iconChanged(stateKey: ComfortState, ev: CustomEvent): void {
-    if (!this._config) return;
-    const icons = { ...(this._config.icons || {}), [stateKey]: ev.detail.value };
-    const newConfig: ComfortCardConfig = { ...this._config, icons };
-    fireEvent(this, "config-changed", { config: newConfig });
-  }
-
   private _resetColors(): void {
     if (!this._config) return;
     const { colors, ...rest } = this._config;
@@ -119,7 +125,11 @@ export class ComfortCardEditor extends LitElement implements ComfortCardEditorEl
   protected render() {
     if (!this.hass || !this._config) return nothing;
 
-    const merged = { ...DEFAULT_COMFORT, ...this._config };
+    const merged = {
+      ...DEFAULT_COMFORT,
+      history_hours: DEFAULT_HISTORY_HOURS,
+      ...this._config,
+    };
     const manual = !!this._config.manual_entities;
 
     return html`
@@ -131,19 +141,20 @@ export class ComfortCardEditor extends LitElement implements ComfortCardEditorEl
         @value-changed=${this._valueChanged}
       ></ha-form>
 
-      <ha-expansion-panel outlined header="Appearance" class="appearance">
-        <p class="hint">Card background colour and icon for each comfort state.</p>
+      ${merged.history_hours > 0
+        ? html`<ha-alert alert-type="info">
+            The history trail uses long-term statistics, so both sensors need
+            <code>state_class: measurement</code>. Sensors without it show no trail.
+          </ha-alert>`
+        : nothing}
+
+      <ha-expansion-panel outlined header="Colours" class="appearance">
+        <p class="hint">Card background colour for each comfort state.</p>
         ${STATES.map((s) => {
           const color = { ...DEFAULT_COLORS[s], ...(this._config!.colors?.[s] || {}) };
-          const icon = this._config!.icons?.[s] || DEFAULT_ICONS[s];
           return html`
             <div class="state-row">
               <div class="state-name">${STATE_LABELS[s]}</div>
-              <ha-icon-picker
-                .hass=${this.hass}
-                .value=${icon}
-                @value-changed=${(ev: CustomEvent) => this._iconChanged(s, ev)}
-              ></ha-icon-picker>
               <label class="swatch">
                 Light
                 <input
@@ -163,13 +174,17 @@ export class ComfortCardEditor extends LitElement implements ComfortCardEditorEl
             </div>
           `;
         })}
-        <mwc-button @click=${this._resetColors}>Reset colours & icons to defaults</mwc-button>
+        <mwc-button @click=${this._resetColors}>Reset colours to defaults</mwc-button>
       </ha-expansion-panel>
     `;
   }
 
   static styles = css`
     ha-form {
+      display: block;
+      margin-bottom: 8px;
+    }
+    ha-alert {
       display: block;
       margin-bottom: 8px;
     }
@@ -191,9 +206,6 @@ export class ComfortCardEditor extends LitElement implements ComfortCardEditorEl
     .state-name {
       flex: 1;
       font-weight: 500;
-    }
-    ha-icon-picker {
-      width: 160px;
     }
     .swatch {
       display: flex;

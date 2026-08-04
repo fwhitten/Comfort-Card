@@ -2,9 +2,14 @@
 
 A Home Assistant Lovelace card that shows a room's temperature/humidity
 comfort at a glance: a circular gauge (comfort zone + current position),
-a comfort-state label ("Pleasant", "Too Warm", "Cold", "Dry", "Humid"),
+a comfort-state label ("Pleasant", "Too warm", "Cold", "Dry", "Humid"),
 and a card background colour that changes with the comfort state — with
 separate light/dark theme colours.
+
+The gauge plots humidity left-to-right (DRY → HUMID) and temperature
+bottom-to-top (COLD → WARM), so the dot's position tells you both
+readings at once, and optionally trails where the room has been over the
+last few hours.
 
 ## Installation
 
@@ -39,16 +44,19 @@ editor lets you:
 - Adjust **comfort thresholds**: the inner-circle "comfort" min/max and
   the outer-circle gauge min/max, independently for temperature and
   humidity.
+- Set **Hours of history** (0–24, default 0) to trail the recent
+  readings as a fading curve behind the current dot. See below.
 - Set a **tap action** / **hold action** (defaults to opening the
   temperature sensor's more-info dialog on tap).
-- Under **Appearance**, override the icon and the light/dark background
-  colour for each of the five comfort states.
+- Under **Colours**, override the light/dark background colour for each
+  of the five comfort states.
 
 ### YAML example
 
 ```yaml
 type: custom:comfort-card
 area: bedroom
+history_hours: 6
 temp_min: 20
 temp_max: 24
 temp_outer_min: 16
@@ -60,6 +68,37 @@ humidity_outer_max: 80
 tap_action:
   action: more-info
 ```
+
+## Responsive layouts
+
+The card measures its own width and height and picks one of three
+arrangements, so it reads well at any size the layout editor allows:
+
+| Layout | When | Arrangement |
+| --- | --- | --- |
+| Horizontal | wide and short | name + state top-left, values bottom-left, gauge right |
+| Square | roughly square | name left / state right, gauge centred, values across the bottom |
+| Vertical | tall or narrow | name and state stacked, gauge centred, values across the bottom |
+
+## The history trail
+
+With `history_hours` above 0, the card plots where the room has been
+over that window as a curve trailing the current reading, fading to
+fully transparent at the oldest end.
+
+**This needs long-term statistics.** The data comes from the recorder's
+`statistics_during_period`, which only covers entities that have
+`state_class: measurement`. Most integration-provided temperature and
+humidity sensors set this, but some template sensors don't — those show
+no trail, with everything else on the card unaffected.
+
+Readings are taken as 5-minute means, so the trail is inherently
+smoothed. On top of that, samples closer together than a minimum
+distance in gauge space are dropped before a Catmull-Rom spline is
+fitted through what remains: sensor jitter otherwise produces clusters
+of near-identical points that make the curve kink and self-intersect.
+The trail refreshes every 5 minutes, matching how often the statistics
+themselves update.
 
 ## How the comfort state is calculated
 

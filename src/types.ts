@@ -2,6 +2,9 @@ import type { ActionConfig, LovelaceCardConfig, LovelaceCardEditor } from "custo
 
 export type ComfortState = "pleasant" | "too_warm" | "cold" | "dry" | "humid";
 
+/** Chosen from the card's measured aspect ratio, not its width alone. */
+export type CardLayout = "horizontal" | "square" | "vertical";
+
 export interface ComfortColorPair {
   light: string;
   dark: string;
@@ -26,7 +29,9 @@ export interface ComfortCardConfig extends LovelaceCardConfig {
   humidity_outer_max?: number;
 
   colors?: Partial<Record<ComfortState, Partial<ComfortColorPair>>>;
-  icons?: Partial<Record<ComfortState, string>>;
+
+  /** 0 disables the trail; capped at 24. */
+  history_hours?: number;
 
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;

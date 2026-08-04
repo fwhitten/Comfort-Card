@@ -1,6 +1,6 @@
 import type { ComfortState, ComfortColorPair } from "./types";
 
-export const CARD_VERSION = "0.1.0";
+export const CARD_VERSION = "0.2.0";
 
 export const DEFAULT_COMFORT = {
   temp_min: 20,
@@ -13,6 +13,9 @@ export const DEFAULT_COMFORT = {
   humidity_outer_max: 80,
 };
 
+export const DEFAULT_HISTORY_HOURS = 0;
+export const MAX_HISTORY_HOURS = 24;
+
 // Light-mode colors are a brighter tint of the dark-mode color, but kept dark
 // enough (relative luminance <= ~0.17) that white card text stays readable
 // (WCAG AA, >= 4.5:1 contrast against white).
@@ -24,18 +27,21 @@ export const DEFAULT_COLORS: Record<ComfortState, ComfortColorPair> = {
   humid: { dark: "#123f42", light: "#1f6d72" },
 };
 
-export const DEFAULT_ICONS: Record<ComfortState, string> = {
-  pleasant: "mdi:emoticon-happy-outline",
-  too_warm: "mdi:thermometer-high",
-  cold: "mdi:thermometer-low",
-  dry: "mdi:water-percent-alert",
-  humid: "mdi:water-percent",
-};
-
 export const STATE_LABELS: Record<ComfortState, string> = {
   pleasant: "Pleasant",
-  too_warm: "Too Warm",
+  too_warm: "Too warm",
   cold: "Cold",
   dry: "Dry",
   humid: "Humid",
 };
+
+/** Labels sitting in the gaps of the ring, at the four cardinal points. */
+export const ARC_LABELS = {
+  top: "WARM",
+  right: "HUMID",
+  bottom: "COLD",
+  left: "DRY",
+};
+
+export const TEMPERATURE_ICON = "mdi:thermometer";
+export const HUMIDITY_ICON = "mdi:water-percent";
