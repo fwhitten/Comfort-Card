@@ -173,14 +173,14 @@ export function fadedRibbon(
   points: GaugePoint[],
   bandCount: number,
   maxOpacity: number,
-  minWidth: number,
-  maxWidth: number
+  width: number
 ): TrailBand[] {
   const total = points.length;
   if (total < 3) return [];
 
   const left: GaugePoint[] = [];
   const right: GaugePoint[] = [];
+  const halfWidth = width / 2;
   let previousNormal = { x: 0, y: -1 };
 
   for (let i = 0; i < total; i++) {
@@ -202,7 +202,6 @@ export function fadedRibbon(
       previousNormal = normal;
     }
 
-    const halfWidth = (minWidth + (maxWidth - minWidth) * (i / (total - 1))) / 2;
     left.push({ x: points[i].x + normal.x * halfWidth, y: points[i].y + normal.y * halfWidth });
     right.push({ x: points[i].x - normal.x * halfWidth, y: points[i].y - normal.y * halfWidth });
   }

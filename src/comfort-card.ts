@@ -25,7 +25,7 @@ import {
   STATE_LABELS,
   TEMPERATURE_ICON,
 } from "./const";
-import { computeComfort, type AxisRange } from "./comfort-calc";
+import { computeComfort, type AxisRange, type GaugePoint } from "./comfort-calc";
 import { fadedRibbon, fetchTrail, simplify, smooth, type TrailBand } from "./history";
 import "./comfort-card-editor";
 
@@ -54,15 +54,16 @@ const DOT_RADIUS = 11;
 /** Half-width of the ring gap each label sits in, in degrees. */
 const LABEL_GAPS = { top: 21, right: 25, bottom: 21, left: 19 };
 
-const TRAIL_MIN_DISTANCE = 0.06;
-const TRAIL_SAMPLES_PER_SEGMENT = 8;
+/** Minimum spacing between kept samples, as a fraction of the gauge radius.
+    Comfortably wider than the trail itself, so the ribbon doesn't fold over
+    itself on tight turns. */
+const TRAIL_MIN_DISTANCE = 0.12;
+const TRAIL_SAMPLES_PER_SEGMENT = 14;
 /** Enough steps to read as a smooth fade, few enough that bands stay long
     relative to their width (short wide bands make the seams obvious). */
 const TRAIL_BANDS = 36;
 const TRAIL_MAX_OPACITY = 0.34;
-const TRAIL_MIN_WIDTH = 10;
-/** Kept under the dot's diameter so the dot hides the ribbon's flat head. */
-const TRAIL_MAX_WIDTH = 19;
+const TRAIL_WIDTH = DOT_RADIUS * 2 * 0.3;
 
 const HISTORY_REFRESH_MS = 5 * 60 * 1000;
 
@@ -114,7 +115,9 @@ export class ComfortCard extends LitElement implements LovelaceCard {
 
   @state() private _config?: ComfortCardConfig;
   @state() private _layout: CardLayout = "square";
-  @state() private _trail: TrailBand[] = [];
+  /** History in gauge space; the ribbon is built per render so the live
+      reading can be appended to it. */
+  @state() private _trailPoints: GaugePoint[] = [];
 
   private _holdTimer?: number;
   private _resizeObserver?: ResizeObserver;
@@ -221,7 +224,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     if (
       changedProps.has("_config") ||
       changedProps.has("_layout") ||
-      changedProps.has("_trail")
+      changedProps.has("_trailPoints")
     ) {
       return true;
     }
@@ -273,7 +276,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     const humidityEntity = this._humidityEntity;
 
     if (!this.hass || !hours || !tempEntity || !humidityEntity) {
-      if (this._trail.length) this._trail = [];
+      if (this._trailPoints.length) this._trailPoints = [];
       this._historyKey = "";
       return;
     }
@@ -288,28 +291,39 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     this._historyKey = key;
     try {
       const { temp, humidity } = this._ranges;
-      const raw = await fetchTrail(this.hass, tempEntity, humidityEntity, hours, temp, humidity);
-      if (raw.length < 2) {
-        this._trail = [];
-        return;
-      }
-
-      const simplified = simplify(raw, TRAIL_MIN_DISTANCE);
-      const smoothed = smooth(simplified, TRAIL_SAMPLES_PER_SEGMENT);
-      const projected = smoothed.map((point) => ({
-        x: CENTER + point.x * PLOT_RADIUS,
-        y: CENTER + point.y * PLOT_RADIUS,
-      }));
-      this._trail = fadedRibbon(
-        projected,
-        TRAIL_BANDS,
-        TRAIL_MAX_OPACITY,
-        TRAIL_MIN_WIDTH,
-        TRAIL_MAX_WIDTH
+      this._trailPoints = await fetchTrail(
+        this.hass,
+        tempEntity,
+        humidityEntity,
+        hours,
+        temp,
+        humidity
       );
     } finally {
       this._historyPending = false;
     }
+  }
+
+  /**
+   * Builds the ribbon, ending at the dot.
+   *
+   * The dot plots the live state while the history comes from 5-minute
+   * statistics means, so the newest bucket sits somewhere short of the current
+   * reading. Appending the dot's own position closes that gap; it also has to
+   * happen per render, because the live value moves between history fetches.
+   */
+  private _buildTrail(current: GaugePoint): TrailBand[] {
+    if (this._trailPoints.length < 2) return [];
+
+    const simplified = simplify([...this._trailPoints, current], TRAIL_MIN_DISTANCE);
+    if (simplified.length < 3) return [];
+
+    const projected = smooth(simplified, TRAIL_SAMPLES_PER_SEGMENT).map((point) => ({
+      x: CENTER + point.x * PLOT_RADIUS,
+      y: CENTER + point.y * PLOT_RADIUS,
+    }));
+
+    return fadedRibbon(projected, TRAIL_BANDS, TRAIL_MAX_OPACITY, TRAIL_WIDTH);
   }
 
   private get _temperatureEntity(): string | undefined {
@@ -368,7 +382,12 @@ export class ComfortCard extends LitElement implements LovelaceCard {
     }
   }
 
-  private _renderGauge(innerRadius: number, dotX: number, dotY: number): TemplateResult {
+  private _renderGauge(
+    innerRadius: number,
+    dotX: number,
+    dotY: number,
+    trail: TrailBand[]
+  ): TemplateResult {
     const { top, right, bottom, left } = LABEL_GAPS;
 
     const ringArcs = [
@@ -402,10 +421,7 @@ export class ComfortCard extends LitElement implements LovelaceCard {
         <circle class="comfort-zone" cx=${CENTER} cy=${CENTER} r=${innerRadius}></circle>
 
         <g class="trail" clip-path="url(#ring-clip)">
-          ${this._trail.map(
-            (band) =>
-              svg`<path d=${band.d} fill-opacity=${band.opacity}></path>`
-          )}
+          ${trail.map((band) => svg`<path d=${band.d} fill-opacity=${band.opacity}></path>`)}
         </g>
 
         <circle class="dot" cx=${dotX} cy=${dotY} r=${DOT_RADIUS}></circle>
@@ -478,7 +494,12 @@ export class ComfortCard extends LitElement implements LovelaceCard {
         </div>
 
         <div class="gauge-wrap">
-          ${this._renderGauge(innerRadius, dotX, dotY)}
+          ${this._renderGauge(
+            innerRadius,
+            dotX,
+            dotY,
+            this._buildTrail({ x: comfort.dotX, y: comfort.dotY })
+          )}
         </div>
 
         <div class="values">
