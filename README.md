@@ -196,5 +196,5 @@ directly, so run `npm run build` and commit the result alongside any change to
 [license-badge]: https://img.shields.io/github/license/fwhitten/Comfort-Card?style=flat-square
 [license-url]: LICENSE
 [my-ha-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
-[my-ha-url]: https://my.home-assistant.io/redirect/hacs_repository/?owner=fwhitten&repository=Comfort-Card&category=dashboard
+[my-ha-url]: https://my.home-assistant.io/redirect/hacs_repository/?owner=fwhitten&repository=Comfort-Card&category=plugin
 [actions-url]: https://www.home-assistant.io/dashboards/actions/
