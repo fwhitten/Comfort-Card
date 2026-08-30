@@ -1,62 +1,91 @@
 # Room Comfort Card
 
-A Home Assistant Lovelace card that shows a room's temperature/humidity
-comfort at a glance: a circular gauge (comfort zone + current position),
-a comfort-state label ("Pleasant", "Too warm", "Cold", "Dry", "Humid"),
-and a card background colour that changes with the comfort state — with
-separate light/dark theme colours.
+[![HACS Custom][hacs-badge]][hacs-url]
+[![Release][release-badge]][release-url]
+[![Validate][validate-badge]][validate-url]
+[![License][license-badge]][license-url]
 
-The gauge plots humidity left-to-right (DRY → HUMID) and temperature
-bottom-to-top (COLD → WARM), so the dot's position tells you both
-readings at once, and optionally trails where the room has been over the
-last few hours.
+A Home Assistant dashboard card that shows a room's temperature and humidity as
+a single glanceable picture, with an optional trail of where the room has been.
+
+<p align="center">
+  <img src="images/hero.png" alt="Room Comfort Card showing a Living Room at 23.2 degrees and 56 percent humidity, in the Pleasant state" width="380">
+</p>
+
+The gauge plots humidity left-to-right (**DRY** → **HUMID**) and temperature
+bottom-to-top (**COLD** → **WARM**). One dot therefore tells you both readings
+at once: how far it sits from the middle is how far the room has drifted from
+comfortable, and which way it leans tells you what to do about it.
+
+## Features
+
+- **Pick an area, not entities.** Choose a room and the card finds its
+  temperature and humidity sensors itself. Individual entities can be picked
+  manually instead.
+- **Comfort state at a glance.** The card names the condition — Pleasant, Too
+  warm, Cold, Dry, Humid — and repaints its background to match.
+- **History trail.** Optionally trails the last few hours as a curve that fades
+  out behind the current reading.
+- **Three responsive layouts.** The card re-arranges itself for landscape,
+  square and portrait shapes rather than squashing one layout.
+- **Fully configurable in the UI.** Every option below has a control in the
+  visual editor — no YAML required.
+- **Light and dark themes**, with per-state colours you can override.
+
+## Layouts
+
+The card measures itself and picks the arrangement that fits its shape.
+
+![The three responsive layouts: landscape, square and portrait](images/layouts.png)
+
+| Layout | When | Arrangement |
+| --- | --- | --- |
+| Landscape | wide and short | name and state top-left, values bottom-left, gauge right |
+| Square | roughly square | name left, state right, gauge centred, values along the bottom |
+| Portrait | tall or narrow | name and state stacked, gauge centred, values along the bottom |
+
+## Comfort states
+
+Each state has its own background colour, tuned separately for light and dark
+themes so the white text stays readable (all pass WCAG AA contrast).
+
+![The five comfort states in dark and light themes](images/states.png)
 
 ## Installation
 
-### Via HACS (custom repository)
+### HACS (recommended)
 
-1. Push this folder to a GitHub repository.
-2. In Home Assistant: HACS → the "..." menu → **Custom repositories**.
-3. Add your repo URL, category **Dashboard**.
-4. Install "Room Comfort Card" from HACS. It will place
-   `comfort-card.js` in `config/www/community/comfort-card/` and
-   register the Lovelace resource automatically.
+This card is not yet in the HACS default store, so add it as a custom
+repository:
+
+1. In Home Assistant, open **HACS**.
+2. Open the **⋮** menu (top right) → **Custom repositories**.
+3. Enter `https://github.com/fwhitten/Comfort-Card` and choose the
+   **Dashboard** category.
+4. Find **Room Comfort Card** in the list and click **Download**.
+5. Reload your browser.
+
+[![Open your Home Assistant instance and open this repository inside HACS.][my-ha-badge]][my-ha-url]
 
 ### Manual
 
-1. Take the pre-built `comfort-card.js` from the repo root (or run
-   `npm install && npm run build` to produce your own).
-2. Copy it into `config/www/comfort-card.js`.
-3. In Home Assistant: **Settings → Dashboards → Resources → Add
-   Resource**, URL `/local/comfort-card.js`, type **JavaScript Module**.
-4. Reload the browser.
+1. Download `comfort-card.js` from the [latest release][release-url].
+2. Copy it to `config/www/comfort-card.js`.
+3. Go to **Settings → Dashboards → ⋮ → Resources → Add resource**, with URL
+   `/local/comfort-card.js` and type **JavaScript module**.
+4. Reload your browser.
 
-## Adding the card
+## Usage
 
-In any dashboard: **Add Card → Search → "Room Comfort"**. The GUI
-editor lets you:
+Edit a dashboard, choose **Add card**, and search for **Room Comfort**.
 
-- Pick an **Area** (the card auto-finds a `sensor` entity in that area
-  with `device_class: temperature` and one with `device_class:
-  humidity`), or turn on **manually choose entities** to pick any two
-  sensors directly.
-- Override the displayed **name** (defaults to the area name).
-- Adjust **comfort thresholds**: the inner-circle "comfort" min/max and
-  the outer-circle gauge min/max, independently for temperature and
-  humidity.
-- Set **Hours of history** (0–24, default 0) to trail the recent
-  readings as a fading curve behind the current dot. See below.
-- Set a **tap action** / **hold action** (defaults to opening the
-  temperature sensor's more-info dialog on tap).
-- Under **Colours**, override the light/dark background colour for each
-  of the five comfort states.
-
-### YAML example
+Everything is configurable from the visual editor. The YAML below is equivalent
+to the defaults, and is only needed if you prefer editing YAML directly:
 
 ```yaml
 type: custom:comfort-card
 area: bedroom
-history_hours: 6
+history_hours: 0
 temp_min: 20
 temp_max: 24
 temp_outer_min: 16
@@ -69,50 +98,103 @@ tap_action:
   action: more-info
 ```
 
-## Responsive layouts
+### Options
 
-The card measures its own width and height and picks one of three
-arrangements, so it reads well at any size the layout editor allows:
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | string | **required** | `custom:comfort-card` |
+| `area` | string | — | Area to read sensors from. The card picks the first `sensor` in that area with `device_class: temperature` and the first with `device_class: humidity`. |
+| `name` | string | area name | Overrides the title. |
+| `manual_entities` | boolean | `false` | Choose entities directly instead of by area. |
+| `temperature_entity` | string | — | Temperature sensor. Required when `manual_entities` is on; also used as a fallback if the area has no matching sensor. |
+| `humidity_entity` | string | — | Humidity sensor, as above. |
+| `history_hours` | number | `0` | Hours of history to trail, 0–24. `0` disables the trail. See [The history trail](#the-history-trail). |
+| `temp_min` / `temp_max` | number | `20` / `24` | Comfortable temperature range — the filled inner circle. |
+| `temp_outer_min` / `temp_outer_max` | number | `16` / `28` | Temperature at the edge of the gauge, used to scale the dot. |
+| `humidity_min` / `humidity_max` | number | `40` / `60` | Comfortable humidity range. |
+| `humidity_outer_min` / `humidity_outer_max` | number | `20` / `80` | Humidity at the edge of the gauge. |
+| `colors` | object | see below | Per-state background colours, each with a `light` and `dark` value. |
+| `tap_action` | action | `more-info` | Standard Home Assistant [action][actions-url]. |
+| `hold_action` | action | — | Standard Home Assistant action. |
 
-| Layout | When | Arrangement |
-| --- | --- | --- |
-| Horizontal | wide and short | name + state top-left, values bottom-left, gauge right |
-| Square | roughly square | name left / state right, gauge centred, values across the bottom |
-| Vertical | tall or narrow | name and state stacked, gauge centred, values across the bottom |
+Temperature options are in whatever unit your sensors report; the card does not
+convert between °C and °F.
+
+### Colours
+
+```yaml
+colors:
+  pleasant: { dark: "#1c3829", light: "#2f6b47" }
+  too_warm: { dark: "#4a2416", light: "#8a4321" }
+  cold:     { dark: "#17324c", light: "#2d5a86" }
+  dry:      { dark: "#4a3c14", light: "#8a6f1f" }
+  humid:    { dark: "#123f42", light: "#1f6d72" }
+```
+
+Card text is always white, so custom colours should stay dark enough to keep it
+readable.
+
+## How the comfort state is decided
+
+Each reading has a **comfort** range (the filled inner circle) and a wider
+**gauge** range (the ring, used only to scale the dot's position).
+
+If both readings sit inside their comfort range, the state is **Pleasant**.
+Otherwise whichever reading is furthest outside its own comfort range — measured
+as a fraction of that range, so the two are compared fairly — names the state. A
+room that is slightly warm but very dry therefore reads **Dry**, not **Too
+warm**, because dryness is the thing worth acting on.
 
 ## The history trail
 
-With `history_hours` above 0, the card plots where the room has been
-over that window as a curve trailing the current reading, fading to
-fully transparent at the oldest end.
+Set **Hours of history** above `0` and the card draws where the room has been,
+fading to transparent at the oldest end.
 
-**This needs long-term statistics.** The data comes from the recorder's
-`statistics_during_period`, which only covers entities that have
-`state_class: measurement`. Most integration-provided temperature and
-humidity sensors set this, but some template sensors don't — those show
-no trail, with everything else on the card unaffected.
+> [!IMPORTANT]
+> The trail needs **long-term statistics**, which means both sensors must have
+> `state_class: measurement`. Most integration-provided temperature and humidity
+> sensors do; some template sensors do not. Sensors without it simply show no
+> trail — the rest of the card is unaffected.
 
-Readings are taken as 5-minute means, so the trail is inherently
-smoothed. On top of that, samples closer together than a minimum
-distance in gauge space are dropped before a Catmull-Rom spline is
-fitted through what remains: sensor jitter otherwise produces clusters
-of near-identical points that make the curve kink and self-intersect.
-The trail refreshes every 5 minutes, matching how often the statistics
-themselves update.
+Readings come from the recorder's 5-minute statistics, so the trail is already
+smoothed. Samples closer together than a minimum distance are then dropped
+before a spline is fitted through the rest, because sensor jitter otherwise
+produces clusters of near-identical points that make the curve kink and cross
+itself. The trail refreshes every 5 minutes, matching how often the statistics
+update.
 
-## How the comfort state is calculated
+## Requirements
 
-Each of temperature and humidity has a "comfort" range (the filled
-inner circle) and a wider "gauge" range (the outer circle, used purely
-for scaling the dot's position). If both readings are within their
-comfort range, the state is **Pleasant**. Otherwise, whichever reading
-is furthest outside its comfort range (as a fraction of that range)
-decides the state — e.g. a room that's mildly warm but very dry shows
-**Dry**, not **Too Warm**.
+- Home Assistant with the **recorder** integration enabled (default) if you want
+  the history trail.
+- Resizing the card in the **sections** dashboard layout needs Home Assistant
+  2024.11 or newer. On older versions the card still works and falls back to the
+  masonry layout.
 
 ## Development
 
 ```bash
 npm install
-npm run watch   # rebuilds comfort-card.js on change
+npm run watch   # rebuild comfort-card.js on change
 ```
+
+`comfort-card.js` is committed to the repository because HACS serves it
+directly, so run `npm run build` and commit the result alongside any change to
+`src/`. CI fails if the two drift apart.
+
+## License
+
+[MIT](LICENSE)
+
+<!-- Badges -->
+[hacs-badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square
+[hacs-url]: https://hacs.xyz/
+[release-badge]: https://img.shields.io/github/v/release/fwhitten/Comfort-Card?style=flat-square
+[release-url]: https://github.com/fwhitten/Comfort-Card/releases/latest
+[validate-badge]: https://img.shields.io/github/actions/workflow/status/fwhitten/Comfort-Card/validate.yml?branch=main&label=validate&style=flat-square
+[validate-url]: https://github.com/fwhitten/Comfort-Card/actions/workflows/validate.yml
+[license-badge]: https://img.shields.io/github/license/fwhitten/Comfort-Card?style=flat-square
+[license-url]: LICENSE
+[my-ha-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
+[my-ha-url]: https://my.home-assistant.io/redirect/hacs_repository/?owner=fwhitten&repository=Comfort-Card&category=dashboard
+[actions-url]: https://www.home-assistant.io/dashboards/actions/

@@ -1,0 +1,52 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # HACS validation depends on GitHub repo metadata (topics, description,
+    # releases), which can drift without any commit, so re-check daily.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    steps:
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: plugin
+
+  build:
+    name: Build is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # comfort-card.js is committed (hacs.json sets content_in_root), so HACS
+      # serves whatever is in the repo rather than building it. If that file
+      # were to drift from src/, users would silently install a stale card.
+      - name: Rebuild and verify the committed bundle matches src/
+        run: |
+          npm run build
+          if ! git diff --quiet -- comfort-card.js; then
+            echo "::error file=comfort-card.js::comfort-card.js is out of date. Run 'npm run build' and commit the result."
+            git diff --stat -- comfort-card.js
+            exit 1
+          fi
+          echo "comfort-card.js matches src/"

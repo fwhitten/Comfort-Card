@@ -1,6 +1,6 @@
 import type { ComfortState, ComfortColorPair } from "./types";
 
-export const CARD_VERSION = "0.2.0";
+export const CARD_VERSION = "1.0.7";
 
 export const DEFAULT_COMFORT = {
   temp_min: 20,

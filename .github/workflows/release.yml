@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    name: Attach card to release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify the tagged bundle matches src/
+        run: |
+          npm run build
+          if ! git diff --quiet -- comfort-card.js; then
+            echo "::error::comfort-card.js at this tag does not match src/."
+            exit 1
+          fi
+
+      # HACS itself reads comfort-card.js from the repository root
+      # (content_in_root), so this asset is a convenience for manual installs.
+      - name: Upload comfort-card.js to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" comfort-card.js --clobber
